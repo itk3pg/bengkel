@@ -1,0 +1,49 @@
+<?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
+
+class Sinkronisasi extends CI_Controller {
+	public function __construct(){
+		parent::__construct();
+		
+		$this->load->model('user_model');
+		$this->load->model('syncsaldo_model');
+		$this->load->model('toko_model');
+	}
+	
+	public function index(){
+		$this->user_model->cekSession('');
+		
+		$DataToko = $this->toko_model->getAllDataToko();
+		$Param  = array();
+		$Param['DataToko'] = $DataToko;
+		
+		$this->load->view('general/header');
+		$this->load->view('general/sidebar');
+		$this->load->view('sinkronisasi', $Param);
+		$this->load->view('general/footer');
+	}
+	
+	public function syncsaldo(){
+		switch($_GET['mode']){
+			case "kasbank" : 
+				$this->syncsaldo_model->SyncSaldoKasbank($_GET);
+				break;
+			case "hutang" :
+				$this->syncsaldo_model->SyncSaldoHutang($_GET);
+				break;
+			case "piutang" :
+				$this->syncsaldo_model->SyncSaldoPiutang($_GET);
+				break;
+			case "barang_gudang" :
+				$this->syncsaldo_model->SyncSaldoBarangGudang($_GET);
+				break;
+			case "barang_gudang_utama" :
+				$this->syncsaldo_model->SyncSaldoBarangGudangUtama($_GET);
+				break;
+			case "barang" :
+				$this->syncsaldo_model->SyncSaldoBarang($_GET);
+				break;
+		}
+	}
+}
+
+?>

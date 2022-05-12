@@ -1,0 +1,240 @@
+<?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
+
+class Barang_model extends CI_Model{
+	function __construct(){
+		parent::__construct();
+	}
+	
+	function getDataBarang($data){
+		$addwhere = "and a.kategori = '".$data['kategori_kode']."'";
+		if($data['kategori_kode'] == ""){
+			$addwhere = "";
+		}
+		$query = "select a.kode, a.barcode, a.kategori, b.nama nama_kategori, a.nama_barang, a.satuan, 
+		a.is_ppn, a.bkl, a.hpp, a.is_aktif, GROUP_CONCAT(d.harga1 separator '#') harga_barang, GROUP_CONCAT(e.nama separator '#') nama_toko 
+		from barang a left join kategori_barang b on a.kategori=b.kode 
+		left join harga_barang_toko d on a.kode=d.barang_kode 
+		left join toko e on d.toko_kode=e.kode
+		where a.is_hapus='0' and (a.barcode like '".$data['keyword']."%' or a.kode like '".$data['keyword']."%' or a.nama_barang like '%".$data['keyword']."%') ".$addwhere." 
+		group by a.kode limit ".(($data['halaman'] -1) * 1000).", 1000";
+		
+		$result = $this->db->query($query);
+		
+		return $result->result_array();
+	}
+
+	function getKodeBarang($data){
+		$query = "select kode, nama_barang, satuan from barang where barcode='".$data['barcode']."'";
+		
+		$result = $this->db->query($query);
+		
+		return $result->result_array();
+	}
+	
+	function getHargaBarang($data){
+		$query = "select b.kode as toko_kode, b.nama, if(a.harga1 is null, 0, a.harga1) as harga from toko b 
+		left join (select * from harga_barang_toko where barang_kode='".$data['barang_kode']."') a on a.toko_kode=b.kode where b.is_hapus='0'";
+		
+		$result = $this->db->query($query);
+		
+		return $result->result_array();
+	}
+	
+	function getHargaSupplier($data){
+		$query = "select b.kode as barang_kode, b.nama_barang, a.supplier_kode, ifnull(a.harga, 0) as harga, if(a.harga is null, 0, if(b.is_ppn='1', a.harga/1.1, a.harga)) as dpp, if(a.harga is null, 0, if(b.is_ppn='1', (a.harga/1.1)*0.1, 0)) as ppn, ifnull(c.saldo_akhir_kwt, 0) as saldo_akhir_kwt from barang b left join harga_barang_supplier a on a.barang_kode=b.kode left join (select barang_kode, saldo_akhir_kwt from saldo_barang_toko where bulan=month(NOW()) and tahun=year(NOW()) and toko_kode='VO0006') c on b.kode=c.barang_kode where b.kode='".$data['barang_kode']."' or b.barcode='".$data['barang_kode']."'";
+		
+		$result = $this->db->query($query);
+		
+		return $result->result_array();
+	}
+	
+	function getHargaBarangToko($data){
+		$query = "select a.toko_kode, a.barang_kode, a.harga1 
+		from harga_barang_toko a where a.toko_kode='".$data['toko_kode']."' and barang_kode='".$data['barang_kode']."'";
+		
+		$result = $this->db->query($query);
+		
+		return $result->result_array();
+	}
+	
+	function getListDataBarang($data){
+		$query = "select a.kode, a.barcode, a.kategori, a.nama_barang, a.is_ppn, a.hpp, a.satuan 
+		from barang a   
+		where a.is_hapus='0' and (a.nama_barang like '%".$data['q']."%' or a.kode like '".$data['q']."%' or a.kode like '".$data['q']."%' or a.barcode like '".$data['q']."%')";
+		
+		$result = $this->db->query($query);
+		
+		return $result->result_array();
+	}
+
+	function getListDataBarangToko($data){
+		$query = "select a.kode, a.barcode, a.kategori, a.nama_barang, a.is_ppn, a.hpp, a.satuan 
+		from barang_toko b left join barang a on b.barang_kode=a.kode where b.toko_kode='".$data['toko_kode']."' and a.is_hapus='0' and (a.nama_barang like '%".$data['q']."%' or a.kode like '".$data['q']."%' or a.barcode like '".$data['q']."%')";
+		
+		$result = $this->db->query($query);
+		
+		return $result->result_array();
+	}
+	
+	function getListPelanggan($data){
+		$query = "select a.kode, a.jenis_pelanggan, a.no_ang, a.nama_pelanggan from pelanggan a where (a.kode like '".$data['q']."%' or a.nama_pelanggan like '%".$data['q']."%')";
+		
+		$result = $this->db->query($query);
+		
+		return $result->result_array();
+	}
+	
+	function getListPelangganAll($data){
+		$query = "select a.kode, a.jenis_pelanggan, a.no_ang, a.nama_pelanggan from pelanggan a where (a.kode like '".$data['q']."%' or a.nama_pelanggan like '%".$data['q']."%')";
+		
+		$result = $this->db->query($query);
+		
+		return $result->result_array();
+	}
+	
+	function SimpanBarang($data){
+		$query = "";
+		$username = $this->session->userdata('username');
+		
+		if($data['mode'] == "i"){
+			$query = "insert into barang (kode, barcode, kategori, nama_barang, satuan, is_ppn, bkl, waktu_insert, waktu_update, is_hapus, user_id, is_aktif) 
+			values('".$data['kode']."','".$data['barcode']."','".base64_decode($data['kategori'])."','".$this->db->escape_str($data['nama_barang'])."','".$data['satuan']."','".$data['is_ppn']."','".$data['is_bkl']."', NOW(), NOW(), 
+			'0', '".$username."','".$data['is_aktif']."')";
+		}else{
+			$query = "update barang set barcode='".$data['barcode']."', kategori='".base64_decode($data['kategori'])."', nama_barang='".$this->db->escape_str($data['nama_barang'])."', satuan='".$data['satuan']."', 
+			is_ppn='".$data['is_ppn']."', bkl='".$data['is_bkl']."', waktu_update=NOW(), 
+			user_id='".$username."', is_aktif='".$data['is_aktif']."' 
+			where kode='".$data['kode']."'";
+		}
+		
+		$this->db->query($query);
+	}
+	
+	function SimpanHargaBarang($data){
+		$queryharga = "";
+		$username = $this->session->userdata('username');
+
+		$queryBarangToko = "insert ignore into barang_toko(barang_kode, toko_kode) values('".$data['kode']."', '".$data['toko_kode']."')";
+		$this->db->query($queryBarangToko);
+		
+		$queryharga = "insert into harga_barang_toko (toko_kode, barang_kode, harga1, harga2, user_id, waktu_insert, waktu_update) 
+		values('".$data['toko_kode']."','".$data['kode']."',".$data['harga1'].",".$data['harga1'].",'".$username."',NOW(),NOW()) on duplicate key update 
+		harga1=".$data['harga1'].", harga2=".$data['harga1'].", user_id='".$username."', waktu_update=NOW()";
+		
+		$this->db->query($queryharga);
+		
+		// $queryHist = "insert into hist_harga_barang(kode, toko_kode, barang_kode, harga1, harga2, harga3, waktu_insert, user_id) 
+		// values(UNIX_TIMESTAMP(), '".$data['toko_kode']."', '".$data['kode']."', ".$data['harga1'].",".$data['harga2'].",".$data['harga3'].", NOW(), '".$username."')";
+		
+		// $this->db->query($queryHist);
+	}
+	
+	function HapusBarang($data){
+		$query = "update barang set is_hapus='1' where kode='".$data['kode']."'";
+		$this->db->query($query);
+
+		$query1 = "delete from barang_supplier where barang_kode='".$data['kode']."'";
+		$query2 = "delete from harga_barang_supplier where barang_kode='".$data['kode']."'";
+		$query3 = "delete from barang_toko where barang_kode='".$data['kode']."'";
+		$query4 = "delete from harga_barang_toko where barang_kode='".$data['kode']."'";
+		$query5 = "delete from barang where kode='".$data['kode']."'";
+		
+		$this->db->query($query1);
+		$this->db->query($query2);
+		$this->db->query($query3);
+		$this->db->query($query4);
+		$this->db->query($query5);
+	}
+	
+	function SimpanBarangSupplier($data){
+		$query = "insert ignore into barang_supplier(barang_kode, supplier_kode) values('".$data['barang_kode']."', '".$data['supplier_kode']."')";
+		
+		$this->db->query($query);
+	}
+	
+	function SimpanHargaBeliSupplier($data){
+		$query = "insert into harga_barang_supplier(barang_kode, supplier_kode, harga, harga_periode, periode) values('".$data['barang_kode']."', 
+		'".$data['supplier_kode']."', ".$data['harga_beli_supplier'].", ".$data['harga_beli_supplier'].", NOW()) on duplicate key update 
+		harga=".$data['harga_beli_supplier'].", harga_periode=".$data['harga_beli_supplier'].", periode=NOW()";
+		
+		$this->db->query($query);
+	}
+	
+	function SimpanBarangToko($data){
+		$query = "insert ignore into barang_toko(barang_kode, toko_kode) values('".$data['barang_kode']."', '".$data['toko_kode']."')";
+		$this->db->query($query);
+	}
+	
+	function GetBarangSupplier($data){
+		$query = "select a.supplier_kode, b.nama_supplier, if(date(NOW()) >= c.periode, c.harga_periode, c.harga) as harga, 
+		c.periode from barang_supplier a left join supplier b on a.supplier_kode=b.kode 
+		left join harga_barang_supplier c on a.barang_kode=c.barang_kode and a.supplier_kode=c.supplier_kode 
+		where a.barang_kode='".$data['barang_kode']."'";
+		
+		$result = $this->db->query($query);
+		return $result->result_array();
+	}
+	
+	function GetBarangToko($data){
+		$query = "select c.toko_kode, d.nama as nama_toko, if(a.margin is null or a.margin<=0, b.margin_harga, a.margin) as margin_harga, if(a.margin2 is null or a.margin2<=0, b.margin_harga2, a.margin2) as margin_harga2 from barang a left join kategori_barang b on a.kategori=b.kode left join harga_barang_toko c on a.kode=c.barang_kode left join toko d on c.toko_kode=d.kode where a.kode='".$data['barang_kode']."' and d.is_hapus='0'";
+		
+		$result = $this->db->query($query);
+		return $result->result_array();
+	}
+	
+	function DeleteAllBarangToko($data){
+		$query = "delete from barang_toko where barang_kode='".$data['barang_kode']."'";
+		$this->db->query($query);
+	}
+
+	function DeleteBarangToko($data){
+		$query = "delete from barang_toko where barang_kode='".$data['barang_kode']."' and toko_kode='".$data['toko_kode']."'";
+		$this->db->query($query);
+	}
+	
+	function DeleteAllBarangSupplier($data){
+		$query = "delete from barang_supplier where barang_kode='".$data['barang_kode']."'";
+		$this->db->query($query);
+	}
+
+	function SimpanMarginHarga($data){
+		if($data['margin1'] != "" && $data['margin1'] > 0){
+			$query = "update barang set margin=".$data['margin1']." where kode='".$data['barang_kode']."'";
+
+			$this->db->query($query);
+		}
+		if($data['margin2'] != "" && $data['margin2'] > 0){
+			$query = "update barang set margin2=".$data['margin2']." where kode='".$data['barang_kode']."'";
+
+			$this->db->query($query);
+		}
+	}
+
+	function getMarginKategori($data){
+		$query = "select a.margin_harga from kategori_barang a where kode='".$data['kategori_kode']."'";
+		
+		$result = $this->db->query($query);
+		$ResultArr = $result->result_array();
+
+		if(sizeof($ResultArr) > 0){
+			return $ResultArr[0]['margin_harga'];
+		}else{
+			return 0;
+		}
+	}
+
+	function generateKodeBarang($data){
+		$panjangKategori = strlen(trim($data['kategori_kode']));
+		$panjangKategori += 1;
+		$query = "select (SUBSTRING(kode, ".$panjangKategori.") + 1) as urut, kode, barcode, nama_barang, kategori from barang where kategori='".$data['kategori_kode']."' and concat('',SUBSTRING(kode, ".$panjangKategori.") * 1) = SUBSTRING(kode, ".$panjangKategori.") order by kode desc limit 1";
+		
+		$result = $this->db->query($query);
+		$ResultArr = $result->result_array();
+
+		if(sizeof($ResultArr) > 0){
+			return $data['kategori_kode']."".$ResultArr[0]['urut'];
+		}else{
+			return $data['kategori_kode']."0";
+		}
+	}
+}

@@ -1,0 +1,61 @@
+<?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
+
+class Supplier_model extends CI_Model{
+	function __construct(){
+		parent::__construct();
+	}
+	
+	function getDataSupplier(){
+		$query = "select a.kode, a.nama_supplier, a.alamat, a.kota, a.provinsi, a.no_telp, a.npwp, a.pkp, a.nama_bank, a.no_rekening, a.top, a.atas_nama 
+		from supplier a";
+		
+		$result = $this->db->query($query);
+		return $result->result_array();
+	}
+	
+	function getListDataSupplier($data){
+		$query = "select a.kode, a.nama_supplier, a.alamat, a.kota, a.provinsi, a.no_telp, a.npwp 
+		from supplier a  
+		where a.nama_supplier like '".$data['q']."%' or a.kode like '".$data['q']."%'";
+		
+		$result = $this->db->query($query);
+		
+		return $result->result_array();
+	}
+	
+	function SimpanSupplier($data){
+		/**
+		 * `kd_pelanggan` varchar(6) NOT NULL,
+		  `nama_pelanggan` varchar(100) DEFAULT NULL,
+		  `alamat` varchar(400) DEFAULT NULL,
+		  `kota` varchar(45) DEFAULT NULL,
+		  `provinsi` varchar(45) DEFAULT NULL,
+		  `no_telp` varchar(45) DEFAULT NULL
+		 */
+		if($data['supplier_mode'] == "1"){ // untuk insert
+			$query = "insert into supplier(kode, nama_supplier, alamat, kota, provinsi, no_telp, npwp, pkp, top, nama_bank, no_rekening, atas_nama) 
+			values('".$data['kode']."','".$data['nama_supplier']."','".$data['alamat']."',
+			'".$data['kota']."','".$data['provinsi']."','".$data['no_telp']."','".$data['npwp']."','".$data['pkp']."', ".$data['top'].", '".$data['nama_bank']."', '".$data['no_rekening']."', '".$data['atas_nama']."')";
+		}else{ // untuk update
+			$query = "update supplier set nama_supplier='".$data['nama_supplier']."', 
+			alamat='".$data['alamat']."', kota='".$data['kota']."', provinsi='".$data['provinsi']."', 
+			no_telp='".$data['no_telp']."', npwp='".$data['npwp']."', pkp='".$data['pkp']."', top=".$data['top'].", nama_bank='".$data['nama_bank']."', no_rekening='".$data['no_rekening']."', atas_nama='".$data['atas_nama']."' 
+			where kode='".$data['kode']."'";
+		}
+		
+		$this->db->query($query);
+	}
+	
+	function HapusSupplier($data){
+		$query = "delete from supplier where kode='".$data['kode']."'";
+		
+		$this->db->query($query);
+	}
+	
+	function getDataTOP($data){
+		$query = "select a.kode, a.top from supplier a where a.kode='".$data['supplier_kode']."'";
+		
+		$result = $this->db->query($query);
+		return $result->result_array();
+	}
+}

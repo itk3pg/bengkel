@@ -1,0 +1,460 @@
+<?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
+
+class Orderpembelian extends CI_Controller {
+	public function __construct(){
+		parent::__construct();
+		
+		$this->load->model('user_model');
+		$this->load->model('orderpembelian_model');
+	}
+	
+	public function index(){
+		$this->user_model->cekSession('');
+		
+		$this->load->view('general/header');
+		$this->load->view('general/sidebar');
+		$this->load->view('op/home');
+		$this->load->view('general/footer');
+	}
+
+	public function import(){
+		$this->load->library('excel');
+		// $output_dir = "/var/www/vmart/uploads/";
+		$output_dir = HOME_DIR."uploads/";
+		
+		$valid_formats = array("xls"); //add the formats you want to upload
+		$file = $_FILES['fileupload']['tmp_name']; //get the temporary uploaded excel name 
+		$name = $_FILES['fileupload']['name']; //get the name of the excel
+		
+		if(strlen($name)){
+			list($txt, $ext) = explode(".", $name);
+			//echo $ext;
+			if(in_array($ext, $valid_formats)){
+				move_uploaded_file($_FILES["fileupload"]["tmp_name"], $output_dir. $_FILES["fileupload"]["name"]);
+			}else{
+				echo "Maaf, format file harus <strong>.xls</strong>";
+			}
+		}else{
+			echo "Please select file";
+		}
+		//exit;
+		$file = $output_dir. $_FILES["fileupload"]["name"];
+		
+		$Reader = PHPExcel_IOFactory::createReaderForFile($file);
+		$Reader->setReadDataOnly(true);
+		$objXLS = $Reader->load($file);
+		$sheet = $objXLS->getSheet(0);
+		$highestRow = $sheet->getHighestRow();
+		$highestColumn = $sheet->getHighestColumn();
+		$DataOP = array();
+		//$this->kupon_model->truncateDump();
+		$index = 0;
+		for ($row = 2; $row <= $highestRow; $row++) {
+			$rowData = $sheet->rangeToArray('A' . $row . ':' . $highestColumn . $row, NULL, TRUE, FALSE);
+			if($rowData[0][1] != ""){
+				$DataOP[$index]['barang_kode'] = str_replace("'", "", $rowData[0][1]);
+				$DataOP[$index]['nama_barang'] = $rowData[0][2];
+				$DataOP[$index]['satuan'] = $rowData[0][3];
+				$DataOP[$index]['kwt'] = $rowData[0][5];
+				if($rowData[0][8] == "0"){ // non ppn
+					$DataOP[$index]['harga'] = $rowData[0][6];
+				}else{
+					$DataOP[$index]['harga'] = ($rowData[0][6] / 1.1);
+				}
+				$DataOP[$index]['ppn'] = $rowData[0][8];
+				$DataOP[$index]['jumlah'] = ($DataOP[$index]['harga'] * $DataOP[$index]['kwt']);
+				$DataOP[$index]['total'] = $rowData[0][7];
+
+				$index++;
+			}
+		}
+
+		echo base64_encode(json_encode($DataOP));
+	}
+	
+	public function getdataop(){
+		$Dataop = $this->orderpembelian_model->getDataOP($_POST);
+		
+		$bukti = "";
+		$html = "<table class=\"table table-striped table-bordered table-hover\" id=\"dataTables-op\">
+                    <thead>
+                        <tr>
+							<th>BUKTI</th>
+                       		<th>TANGGAL</th>
+							<th>SUPPLIER</th>
+                            <th colspan=\"2\">BARANG</th>
+							<th>SATUAN</th>
+                            <th>KWT</th>
+                            <th>HARGA</th>
+                            <th>PPN</th>
+                            <th>JUMLAH</th>
+                        </tr>
+                    </thead>
+                    <tbody>";
+		foreach ($Dataop as $key => $value) {
+			$html .= "<tr data=\"".base64_encode(json_encode($value))."\">";
+			if($bukti != $value['bukti']){
+				$html .= "<td>".$value['bukti']."</td>
+						  <td>".$value['tanggal']."</td>
+						  <td>".$value['nama_supplier']."</td>";
+				$bukti = $value['bukti'];
+			}else{
+				$html .= "<td></td>
+						  <td></td>
+						  <td></td>";
+			}
+			$html .= "	<td>".$value['barang_kode']."</td>
+						<td>".$value['nama_barang']."</td>
+						<td>".$value['satuan']."</td>
+						<td align='right'>".$value['kwt']."</td>
+						<td align='right'>".number_format($value['harga'],2)."</td>
+						<td align='right'>".number_format($value['ppn'],2)."</td>
+						<td align='right'>".number_format($value['jumlah'],2)."</td>
+					  </tr>";
+		}
+		
+		$html .= "</tbody>
+				</table>";
+		echo $html;
+	}
+	
+	public function simpanop(){
+		if($_POST['jumlah'] > 0){
+			$_POST['supplier_kode'] = base64_decode($_POST['supplier_kode']);
+			$this->orderpembelian_model->SimpanOP($_POST);
+		}
+	}
+	
+	public function hapusop(){
+		$this->orderpembelian_model->HapusOP($_POST);
+	}
+	
+	public function getdatabarangop(){
+		$DataBarangop = $this->orderpembelian_model->getDataBarangOP($_POST);
+		
+		$html = "";
+		foreach ($DataBarangop as $key => $value) {
+			$html .= "<tr>
+						<td>".$value['barang_kode']."</td>
+						<td>".$value['nama_barang']."</td>
+						<td>".$value['satuan']."</td>
+						<td id=\"kwt_".$value['barang_kode']."\" class=\"text-right\">".$value['kwt']."</td>
+						<td id=\"kwt_datang_".$value['barang_kode']."\" class=\"text-right\">".$value['kwt']."</td>
+						<td id=\"retur_".$value['barang_kode']."\" class=\"text-right\">0</td>
+						<td id=\"harga_".$value['barang_kode']."\" class=\"text-right\">".$value['harga_asli']."</td>
+						<td id=\"diskon_".$value['barang_kode']."\" class=\"text-right\">".$value['diskon1']."</td>
+						<td id=\"ppn_".$value['barang_kode']."\" class=\"text-right\">".$value['ppn']."</td>
+						<td id=\"jumlah_".$value['barang_kode']."\" class=\"text-right\">".$value['jumlah']."</td>
+						<td class=\"text-center\">
+							<button type=\"button\" id=\"btnopen_".$value['barang_kode']."\" style=\"padding: 1px 5px;\" onclick=\"Editkwt('".base64_encode(json_encode($value))."')\" class=\"btn btn-warning btn-sm\">
+								<i class=\"fa fa-edit\"></i>
+							</button>
+							<input type='text' style='width: 80px; text-align: right; float: left; display: none;' class='form-control' id='retur_edit_".$value['barang_kode']."' name='retur_edit_".$value['barang_kode']."' />
+							<button id='btn_cancel_edit_kwt_".$value['barang_kode']."' onclick=\"CancelEditkwt('".$value['barang_kode']."')\" name='btn_cancel_edit_kwt_".$value['barang_kode']."' type=\"button\" style=\"padding: 6px 5px; float: left; display: none;\" onclick=\"SimpanEditKwt(this)\" class=\"btn btn-danger btn-sm\">
+								<i class=\"fa fa-times\"></i>
+							</button>
+							<button id='btn_edit_kwt_".$value['barang_kode']."' onclick=\"SimpanEditRetur('".$value['barang_kode']."')\" name='btn_edit_kwt_".$value['barang_kode']."' type=\"button\" style=\"padding: 6px 5px; float: left; display: none;\" class=\"btn btn-success btn-sm\">
+								<i class=\"fa fa-check\"></i>
+							</button>
+							<!--<button type=\"button\" style=\"padding: 1px 6px;\" onclick=\"HapusRow(this)\" class=\"btn btn-danger btn-sm\"><i class=\"fa fa-times\"></i></button>-->
+						</td>
+					</tr>";
+		}
+		
+		echo $html;
+	}
+	
+	public function getdatabarangsupplier(){
+		$DataBarangSupplier = $this->orderpembelian_model->getDataBarangSupplier($_POST);
+		
+		$html = "";
+		foreach ($DataBarangSupplier as $key => $value) {
+			$ppn = 0;
+			if($value['pkp'] == "1"){
+				$ppn = $value['harga'] * 0.1;
+			}
+			$html .= "<tr>
+						<td>".$value['kode']."</td>
+						<td>".$value['nama_barang']."</td>
+						<td>".$value['satuan']."</td>
+						<td id=\"saldo_akhir_ket_".$value['kode']."\" class=\"text-right\">".$value['saldo_akhir_kwt']."</td>
+						<td id=\"kwt_".$value['kode']."\" class=\"text-right\">".$value['kwt']."</td>
+						<td id=\"harga_".$value['kode']."\" class=\"text-right\">".$value['harga']."</td>
+						<td id=\"diskon1_".$value['kode']."\" class=\"text-right\">".$value['diskon1']."</td>
+						<td id=\"jumlah_".$value['kode']."\" class=\"text-right\">0</td>
+						<td id=\"ppn_".$value['kode']."\" class=\"text-right\">".$ppn."</td>
+						<td id=\"total_".$value['kode']."\" class=\"text-right\">0</td>
+						<td class=\"text-center\">
+							<button type=\"button\" style=\"padding: 1px 5px;\" onclick=\"Editkwt('".$value['kode']."', '".$this->db->escape_str($value['nama_barang'])."', '".$value['kwt']."', '".$value['diskon1']."')\" class=\"btn btn-warning btn-sm\">
+								<i class=\"fa fa-edit\"></i>
+							</button>
+							<button type=\"button\" style=\"padding: 1px 6px;\" onclick=\"HapusRow(this)\" class=\"btn btn-danger btn-sm\"><i class=\"fa fa-times\"></i></button>
+						</td>
+					</tr>";
+		}
+		
+		echo $html;
+	}
+	
+	public function getdatabarangeditop(){
+		$DataBarangSupplier = $this->orderpembelian_model->getDataBarangEditOP($_POST);
+		
+		$html = "";
+		foreach ($DataBarangSupplier as $key => $value) {
+			$JumlahSebelumPajak = $value['harga'] * $value['kwt'];
+			$ppn = $value['ppn'];
+			$html .= "<tr>
+						<td>".$value['barang_kode']."</td>
+						<td>".$value['nama_barang']."</td>
+						<td>".$value['satuan']."</td>
+						<td id=\"saldo_akhir_ket_".$value['barang_kode']."\" class=\"text-right\">".$value['saldo_akhir_kwt']."</td>
+						<td id=\"kwt_".$value['barang_kode']."\" class=\"text-right\">".$value['kwt']."</td>
+						<td id=\"harga_".$value['barang_kode']."\" class=\"text-right\">".$value['harga_asli']."</td>
+						<td id=\"harga_".$value['barang_kode']."\" class=\"text-right\">".$value['diskon1']."</td>
+						<td id=\"jumlah_".$value['barang_kode']."\" class=\"text-right\">".$JumlahSebelumPajak."</td>
+						<td id=\"ppn_".$value['barang_kode']."\" class=\"text-right\">".$ppn."</td>
+						<td id=\"total_".$value['barang_kode']."\" class=\"text-right\">".$value['jumlah']."</td>
+						<td class=\"text-center\">
+							<button type=\"button\" style=\"padding: 1px 5px;\" onclick=\"Editkwt('".$value['barang_kode']."', '".$this->db->escape_str($value['nama_barang'])."', '".$value['kwt']."', '".$value['diskon1']."')\" class=\"btn btn-warning btn-sm\">
+								<i class=\"fa fa-edit\"></i>
+							</button>
+							<button type=\"button\" style=\"padding: 1px 6px;\" onclick=\"HapusRow(this)\" class=\"btn btn-danger btn-sm\"><i class=\"fa fa-times\"></i></button>
+						</td>
+					</tr>";
+		}
+		
+		echo $html;
+	}
+	
+	public function listpilihop(){
+		$_POST['supplier_kode'] = base64_decode($_POST['supplier_kode']);
+		$Dataod = $this->orderpembelian_model->getDataListOP($_POST);
+		
+		$bukti = "";
+		$html = "<table class=\"table table-striped table-bordered table-hover\" id=\"dataTables-od\">
+                    <thead>
+                        <tr>
+							<th>BUKTI</th>
+                       		<th>TANGGAL</th>
+							<th>SUPPLIER</th>
+							<th>&nbsp;</th>
+                        </tr>
+                    </thead>
+                    <tbody>";
+		foreach ($Dataod as $key => $value) {
+			$html .= "<tr>
+						<td>".$value['bukti']."</td>
+						<td>".$value['tanggal']."</td>
+						<td>".$value['nama_supplier']."</td>
+						<td align=\"center\">
+							<button id=\"btn_pilih\" class=\"btn btn-info btn-sm\" type=\"button\" onclick=\"PilihOP('".$value['bukti']."')\">
+								<i class=\"fa fa-check\"></i>
+							</button>
+						</td>
+					  </tr>";
+		}
+		
+		$html .= "</tbody>
+				</table>";
+		echo $html;
+	}
+	
+	public function gethargabeli(){
+		$DataHargaSupplier = $this->orderpembelian_model->getHargaBarangSupplier($_POST);
+		
+		$harga = 0;
+		if(sizeof($DataHargaSupplier) > 0){
+			$harga = $DataHargaSupplier[0]['harga'];
+		}
+		
+		echo $harga;
+	}
+	
+	public function getstokdc(){
+		$DataStokDC = $this->orderpembelian_model->getStokDC($_POST);
+		
+		$saldo_kwt = 0;
+		if(sizeof($DataStokDC) > 0){
+			$saldo_kwt = $DataStokDC[0]['saldo_akhir_kwt'];
+		}
+		
+		echo $saldo_kwt;
+	}
+	
+	public function cetakbarangsupplier(){
+		header("Content-type: application/vnd.ms-excel");
+		header("Content-Disposition: attachment;Filename=Barang_Supplier_".$_GET['supplier_kode'].".xls");
+		
+		$DataBarangSupplier = $this->orderpembelian_model->getDataBarangSupplier($_GET);
+		
+		$html = "<table>
+					<thead>
+						<tr>
+							<th>Kode Barang</th>
+							<th>Nama Barang</th>
+							<th>Satuan</th>
+							<th>Saldo Barang DC</th>
+							<th>Saldo Barang Tuban</th>
+							<th>Harga</th>
+						</tr>
+					</thead>
+					<tbody>";
+		foreach ($DataBarangSupplier as $key => $value) {
+			$html .= "<tr>
+						<td>".$value['kode']."</td>
+						<td>".$value['nama_barang']."</td>
+						<td>".$value['satuan']."</td>
+						<td class=\"text-right\">".$value['saldo_akhir_kwt']."</td>
+						<td class=\"text-right\">".$value['saldo_akhir_kwt_tuban']."</td>
+						<td class=\"text-right\">".$value['harga']."</td>
+					</tr>";
+		}
+		$html .= "</tbody>
+				</table>";
+		
+		echo $html;
+	}
+	
+	public function cetakop(){
+		$DataBarangOP = $this->orderpembelian_model->getDataBarangEditOP($_GET);
+		
+		$html = "<style>
+				 	table {
+				 		font-size: 7px;
+				 		font-family: \"Courier New\", Courier, monospace;
+				 	}
+				 	table.content {
+				 		padding: 2px;
+				 	}
+				 	
+				 	table.content tbody {
+				 		border-style: dotted;
+				 	}
+				 </style>";
+		$html .= "<table>
+					<tr>
+						<td><strong>Koperasi karyawan Keluarga Besar Petrokimia Gresik</strong></td>
+						<td align=\"right\">Order Pembelian (OP)</td>
+					</tr>
+					<tr>
+						<td>Jl. ... Petrokimia Gresik</td>
+						<td>&nbsp;</td>
+					</tr>
+				  </table>";
+		$html .= "<table>
+					<tr>
+						<td width=\"70\">Supplier</td>
+						<td width=\"30\"> : </td>
+						<td width=\"200\">".$DataBarangOP[0]['nama_supplier']."</td>
+						<td width=\"70\"></td>
+						<td width=\"80\">Tanggal</td>
+						<td width=\"30\"> : </td>
+						<td width=\"100\">".$DataBarangOP[0]['tanggal']."</td>
+					</tr>
+					<tr>
+						<td width=\"70\">Uraian</td>
+						<td width=\"30\"> : </td>
+						<td width=\"200\">Order Pembelian (OP)</td>
+						<td width=\"70\"></td>
+						<td width=\"80\">No Transaksi</td>
+						<td width=\"30\"> : </td>
+						<td width=\"100\">".$DataBarangOP[0]['bukti']."</td>
+					</tr>
+				  </table><br/><br/>";
+		$html .= "<table class=\"content\">
+					<thead>
+						<tr>
+							<th width=\"20\">No</th>
+							<th width=\"50\">Kode</th>
+							<th width=\"200\">Nama Barang</th>
+							<th width=\"80\" align=\"right\">Harga</th>
+							<th width=\"40\" align=\"right\">Minta</th>
+							<th width=\"100\" align=\"right\">Total</th>
+						</tr>
+					</thead>
+					<tbody>";
+		$inc = 1;
+		$TotalHarga = 0;
+		$TotalPPN = 0;
+		$TotalTransaksi = 0;
+		foreach($DataBarangOP as $key => $value){
+			$JumlahHarga = $value['harga'] * $value['kwt'];
+			$html .= "<tr>
+						<td width=\"20\">".$inc."</td>
+						<td width=\"50\">".$value['barang_kode']."</td>
+						<td width=\"200\">".$value['nama_barang']."</td>
+						<td width=\"80\" align=\"right\">".number_format($value['harga'],2)."</td>
+						<td width=\"40\" align=\"right\">".number_format($value['kwt'],2)."</td>
+						<td width=\"100\" align=\"right\">".number_format($JumlahHarga,2)."</td>
+					  </tr>";
+			$inc++;
+			$TotalPPN += ($value['ppn'] * $value['kwt']);
+			$TotalHarga += ($value['harga'] * $value['kwt']);
+			$TotalTransaksi += ($value['ppn'] + $value['harga']) * $value['kwt'];
+		}
+		$html .= "<tr>
+					<td colspan=\"5\">&nbsp;</td>
+					<td align=\"right\">&nbsp;</td>
+				  </tr>";
+		$html .= "</tbody></table>";
+		$html .= "<table>
+					<tr>
+						<td width=\"70\">DPP</td>
+						<td width=\"30\"> : </td>
+						<td width=\"100\" align=\"right\">".number_format($TotalHarga,2)."</td>
+					</tr>
+					<tr>
+						<td width=\"70\">PPN</td>
+						<td width=\"30\"> : </td>
+						<td width=\"100\" align=\"right\">".number_format($TotalPPN,2)."</td>
+					</tr>
+					<tr>
+						<td width=\"70\">Total</td>
+						<td width=\"30\"> : </td>
+						<td width=\"100\" align=\"right\">".number_format($TotalTransaksi,2)."</td>
+					</tr>
+				  </table><br/><br/><br/><br/>";
+		$html .= "<table>
+					<tr>
+						<td align=\"center\">Purchasing</td>
+						<td align=\"center\">Manager Ops. MD/DC</td>
+						<td align=\"center\">Manager Retail</td>
+					</tr>
+					<tr>
+						<td>&nbsp;</td>
+						<td>&nbsp;</td>
+						<td>&nbsp;</td>
+					</tr>
+					<tr>
+						<td>&nbsp;</td>
+						<td>&nbsp;</td>
+						<td>&nbsp;</td>
+					</tr>
+					<tr>
+						<td>&nbsp;</td>
+						<td>&nbsp;</td>
+						<td>&nbsp;</td>
+					</tr>
+					<tr>
+						<td>&nbsp;</td>
+						<td>&nbsp;</td>
+						<td>&nbsp;</td>
+					</tr>
+					<tr>
+						<td align=\"center\">( ".$this->session->userdata('nama')." )</td>
+						<td align=\"center\">( .................................... )</td>
+						<td align=\"center\">( .................................... )</td>
+					</tr>
+				  </table>";
+
+		$this->load->library('Pdf');
+		
+		$pdf = new TCPDF("P", PDF_UNIT, 'A4', true, 'UTF-8', false);
+		// Add a page
+		$pdf->setPrintHeader(false);
+		$pdf->setPrintFooter(false);
+		$pdf->AddPage();
+		$pdf->writeHTML($html, true, false, true, false, '');
+		$pdf->Output('OrderPembelian.pdf', 'I');
+	}
+}

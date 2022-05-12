@@ -1,0 +1,56 @@
+<?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
+
+class Kategoribarang_model extends CI_Model{
+	function __construct(){
+		parent::__construct();
+	}
+	
+	function getChild($parent){
+		$query = "";
+		if($parent == ""){
+			$query = "select kode, nama, keterangan, margin_harga from kategori_barang where is_hapus='0' and (parent='' or parent is null)";
+		}else{
+			$query = "select kode, nama, keterangan, margin_harga from kategori_barang where is_hapus='0' and parent='".$this->db->escape_str($parent)."'";
+		}
+		
+		$result = $this->db->query($query);
+		
+		return $result->result_array();
+	}
+	
+	function getDataKategori(){
+		$query = "select kode, nama, keterangan, margin_harga from kategori_barang where is_hapus='0'";
+		$result = $this->db->query($query);
+		
+		return $result->result_array();
+	}
+	
+	function simpankategori($data){
+		$query = "";
+		if($data['mode'] == "i"){ // insert
+			$query = "insert into kategori_barang(kode, nama, margin_harga, is_hapus) values(UNIX_TIMESTAMP(), '".$this->db->escape_str($data['nama'])."', '".$data['margin_harga']."', '0')";
+		}else{ // update
+			$query = "update kategori_barang set nama='".$this->db->escape_str($data['nama'])."', margin_harga=".$data['margin_harga']." where kode='".$data['kode']."'";
+		}
+		$this->db->query($query);
+	}
+	
+	function setparent($data){
+		if($data['parent'] == "null"){
+			$data['parent'] = "";
+		}
+		$query = "update kategori_barang set parent='".$this->db->escape_str($data['parent'])."' where kode='".$data['kode']."'";
+		
+		$this->db->query($query);
+	}
+	
+	function HapusKategori($data){
+		$queryUpdate = "update kategori_barang set parent='' where parent='".$data['kode']."'";
+		echo $queryUpdate;
+		$this->db->query($queryUpdate);
+		
+		$queryhapus = "update kategori_barang set is_hapus='1' where kode='".$data['kode']."'";
+		echo $queryhapus;
+		$this->db->query($queryhapus);
+	}
+}

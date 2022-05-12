@@ -1,0 +1,87 @@
+<?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
+
+class Perubahanharga extends CI_Controller {
+	public function __construct(){
+		parent::__construct();
+		
+		$this->load->model('user_model');
+		$this->load->model('laporan_model');
+		$this->load->model('toko_model');
+	}
+	
+	public function index(){
+		$this->user_model->cekSession('');
+		
+		$DataToko = $this->toko_model->getDataToko();
+		
+		$Param  = array();
+		$Param['DataToko'] = $DataToko;
+		
+		$this->load->view('general/header');
+		$this->load->view('general/sidebar');
+		$this->load->view('laporan/perubahanharga', $Param);
+		$this->load->view('general/footer');
+	}
+	
+	public function getdataperubahanharga(){
+		$DataPerubahanHarga = $this->laporan_model->getDataPerubahanHarga($_POST);
+		$html = "";
+		foreach ($DataPerubahanHarga as $key => $value) {
+			$html .= "<tr>
+						<td>".$value['barang_kode']."</td>
+						<td>".$value['nama_barang']."</td>
+						<td>".number_format($value['harga1'],2)."</td>
+						<td>".number_format($value['harga2'],2)."</td>
+						<td>".$value['waktu_insert']."</td>
+						<td>".number_format($value['harga1_lama'],2)."</td>
+						<td>".number_format($value['harga2_lama'],2)."</td>
+						<td>".$value['waktu_harga_lama']."</td>
+					  </tr>";
+		}
+		
+		echo $html;
+	}
+	
+	public function cetakperubahanharga(){
+		header("Content-type: application/vnd.ms-excel");
+		header("Content-Disposition: attachment;Filename=rekap_perubahan_harga_".$_GET['toko_kode'].".xls");
+		$DataPerubahanHarga = $this->laporan_model->getDataPerubahanHarga($_GET);
+		
+		$html = "<table>
+					<tr>
+						<td colspan=\"10\" align=\"center\">DATA PERUBAHAN HARGA</td>
+					</tr>
+					<tr>
+						<td align=\"center\" colspan=\"10\">PERIODE : ".$_GET['tanggal']."</td>
+					</tr>
+				 </table>";
+		$html .= "<table border=\"1\" id=\"table-rekap\">
+					<thead>
+						<tr>
+							<th>Kode Barang</th>
+							<th>Nama Barang</th>
+							<th>Harga 1</th>
+							<th>Harga 2</th>
+							<th>Waktu</th>
+							<th>Harga 1 Lama</th>
+							<th>Harga 2 Lama</th>
+							<th>Waktu Harga Lama</th>
+						</tr>
+					</thead>
+					<tbody>";
+		foreach ($DataPerubahanHarga as $key => $value) {
+			$html .= "<tr>
+						<td>".$value['barang_kode']."</td>
+						<td>".$value['nama_barang']."</td>
+						<td>".number_format($value['harga1'],2)."</td>
+						<td>".number_format($value['harga2'],2)."</td>
+						<td>".$value['waktu_insert']."</td>
+						<td>".number_format($value['harga1_lama'],2)."</td>
+						<td>".number_format($value['harga2_lama'],2)."</td>
+						<td>".$value['waktu_harga_lama']."</td>
+					  </tr>";
+		}
+		$html .= "</tbody></table>";		 
+		echo $html;
+	}
+}

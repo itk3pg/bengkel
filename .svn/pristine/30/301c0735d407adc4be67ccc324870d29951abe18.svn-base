@@ -1,0 +1,191 @@
+<div id="page-wrapper">
+	<div class="row">
+	    <div class="col-lg-6">
+	        <h1 style="margin-top: 15px;" class="page-header">Master Kelompok Barang</h1>
+	    </div>
+	    <!-- /.col-lg-12 -->
+	</div>
+	<div class="row">
+		<div class="col-lg-12">
+			<div class="panel panel-default">
+				<div class="panel-heading">
+					<button id="btn_upload" onclick="openFormTambahKelompokBarang()" class="btn btn-primary btn-sm" type="button">
+						<i class="fa fa-plus"></i>
+						&nbsp;&nbsp;Tambah
+					</button>
+					<button id="btn_upload" onclick="openFormEditKelompokBarang()" class="btn btn-success btn-sm" type="button">
+						<i class="fa fa-edit"></i>
+						&nbsp;&nbsp;Edit
+					</button>
+					<button id="btn_upload" fungsi="HapusKelompokBarang()" class="btn btn-danger btn-sm ask-kelbarang" type="button">
+						<i class="fa fa-times"></i>
+						&nbsp;&nbsp;Hapus
+					</button>
+					<div id="progres-main-kelbarang" style="width: 150px; float: right; display: none;">
+						<div class="progress progress-striped active">
+							<div class="progress-bar progress-bar-info" style="width: 100%" aria-valuemax="100" aria-valuemin="0" aria-valuenow="20" role="progressbar">
+								<span class="sr-only">20% Complete</span>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="panel-body">
+					<div class="table-responsive table-kelbarang">
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<!-- Form popup untuk tambah pelanggan -->
+	<div class="modal fade" id="form-kelbarang" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+		<div class="modal-dialog modal-sm">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+        			<h4 class="modal-title" id="myModalLabel">Form Kelompok Barang</h4>
+				</div>
+				<div class="modal-body">
+					Kode Kelompok Barang :
+					<div class="form-group input-group">
+						<span class="input-group-addon">
+							<i class="fa fa-file"></i>
+						</span>
+						<input type="text" placeholder="Kode Kelompok Barang" name="kode_kelbarang" id="kode_kelbarang" class="form-control">
+					</div>
+					Nama Kelompok Barang :
+					<div class="form-group input-group">
+						<span class="input-group-addon">
+							<i class="fa fa-file"></i>
+						</span>
+						<input type="text" placeholder="Nama Kelompok Barang" name="nama_kelbarang" id="nama_kelbarang" class="form-control">
+					</div>
+					Margin Harga 1 (%):
+					<div class="form-group input-group">
+						<span class="input-group-addon">
+							<i class="fa fa-file"></i>
+						</span>
+						<input type="text" placeholder="Margin Harga 1" name="kelbarang_margin1" id="kelbarang_margin1" class="form-control">
+					</div>
+					Margin Harga 2 (%):
+					<div class="form-group input-group">
+						<span class="input-group-addon">
+							<i class="fa fa-file"></i>
+						</span>
+						<input type="text" placeholder="Margin Harga 2" name="kelbarang_margin2" id="kelbarang_margin2" class="form-control">
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" onclick="clearForm()" class="btn btn-default">Reset</button>
+					<button type="button" class="btn btn-default" onclick="clearForm()" data-dismiss="modal">Close</button>
+					<img src="<?= base_url() ?>/images/loader.gif" id="loader-form"  style="width: 30px; display: none;" />
+			        <button type="button" id="btn-simpan" onclick="simpankelbarang()" class="btn btn-primary"><i class="fa fa-save"></i>&nbsp;&nbsp;&nbsp;&nbsp;Simpan</button>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<script>
+	$(document).ready(function(){
+		OpenMenu();
+		
+		LoadDataKelompokBarang();
+
+		$('.ask-kelbarang').jConfirmAction();
+	});
+	
+	function LoadDataKelompokBarang(){
+		$('#progres-main-kelbarang').show();
+		$.ajax({
+			type: "POST",
+			url: "<?= base_url() ?>index.php/kategoribarang/getdatakelbarang",
+			data: "",
+			success: function(msg){
+				$(".table-kelbarang").html(msg);
+				table_kelbarang = $('#dataTables-kelbarang').dataTable();
+				$('#progres-main-kelbarang').hide();
+				
+				$('#dataTables-kelbarang tbody').on( 'click', 'tr', function () {
+			        if ( $(this).hasClass('active') ) {
+			            $(this).removeClass('active');
+			        }else {
+			            table_kelbarang.$('tr.active').removeClass('active');
+			            $(this).addClass('active');
+			        }
+			    } );
+			}
+		});
+	}
+	
+	function openFormTambahKelompokBarang(){
+		$("#form-kelbarang").modal("show");
+	}
+	
+	function simpankelbarang(){
+		$('#loader-form').show();
+		$('#btn-simpan').hide();
+		
+		var kelbarang_kode = $("#kode_kelbarang").val();
+		var kelbarang_nama = $("#nama_kelbarang").val();
+		var kelbarang_margin1 = $("#kelbarang_margin1").val();
+		var kelbarang_margin2 = $("#kelbarang_margin2").val();
+		$.ajax({
+			type: "POST",
+			url: "<?= base_url(); ?>index.php/kategoribarang/simpankelbarang",
+			data: "kode="+kelbarang_kode+"&nama="+kelbarang_nama+"&margin1="+kelbarang_margin1+"&margin2="+kelbarang_margin2,
+			success: function(msg){
+				clearForm();
+				$('#loader-form').hide();
+				$('#btn-simpan').show();
+				LoadDataKelompokBarang();
+				
+				$("#form-kelbarang").modal("hide");
+			},
+			error: function(xhr,status,error){
+				alert(status);
+				$('#loader-form').show();
+				$('#btn-simpan').hide();
+			}
+		});
+	}
+	
+	function HapusKelompokBarang(){
+		var data = table_kelbarang.$('tr.active').attr("data");
+		if(typeof data == "undefined"){
+			alert("Silahkan pilih salah satu data terlebih dahulu");
+		}else{
+			var dataArr = json_decode(base64_decode(data));
+			
+			$.ajax({
+				type: "POST",
+				url: "<?= base_url() ?>index.php/kategoribarang/hapuskelbarang",
+				data: "kode="+dataArr['kode'],
+				success: function(msg){
+					LoadDataKelompokBarang();
+				}
+			});
+		}
+	}
+	
+	function openFormEditKelompokBarang(){
+		var data = table_kelbarang.$('tr.active').attr("data");
+		if(typeof data == "undefined"){
+			alert("Silahkan pilih salah satu data terlebih dahulu");
+		}else{
+			var dataArr = json_decode(base64_decode(data));
+			
+			$("#kode_kelbarang").val(dataArr['kode']);
+			$("#nama_kelbarang").val(dataArr['nama']);
+			$("#kelbarang_margin1").val(dataArr['margin_harga']);
+			$("#kelbarang_margin2").val(dataArr['margin_harga2']);
+			
+			$("#form-kelbarang").modal("show");
+		}
+	}
+	
+	function clearForm(){
+		$("#kode_kelbarang").val('');
+		$("#nama_kelbarang").val('');
+		$("#kelbarang_margin1").val('0');
+		$("#kelbarang_margin2").val('0');
+	}
+</script>

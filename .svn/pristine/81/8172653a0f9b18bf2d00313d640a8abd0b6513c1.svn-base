@@ -1,0 +1,249 @@
+<div id="page-wrapper">
+	<div class="row">
+	    <div class="col-lg-12">
+	        <h1 style="margin-top: 15px;" class="page-header">Stock Opname</h1>
+	    </div>
+	    <!-- /.col-lg-12 -->
+	</div>
+	<div class="row">
+		<div class="col-lg-12">
+			<table style="float: right;">
+				<tr>
+					<td style="width: 125px;">
+						Toko :
+						<div class="form-group input-group">
+							<span class="input-group-addon">
+								<i class="fa fa-file"></i>
+							</span>
+							<select onchange="loadListBukti();" class="form-control" style='width: 200px;' name="cari_toko_kode" id="cari_toko_kode">
+								<option value="-1">Pilih Toko</option>
+							</select>
+						</div>
+					</td>
+					<td>&nbsp;&nbsp;</td>
+					<td style="width: 200px;">
+						Tanggal :
+						<div class="form-group input-group">
+							<span class="input-group-addon">
+								<i class="fa fa-calendar"></i>
+							</span>
+							<input type="text" value="<?= date('Y-m-d'); ?>" name="search_tanggal" id="search_tanggal" class="form-control">
+						</div>
+					</td>
+					<td>&nbsp;&nbsp;</td>
+					<td style="width: 300px;">
+						<button id="btn_upload" style="float: right; padding: 7px 11px" onclick="LoadDataStockopname()" class="btn btn-success btn-sm" type="button">
+							<i class="fa fa-search"></i>
+						</button>
+						<input style="width: 250px; float: right;" placeholder="Kode/Barcode/nama Barang" type="text" onkeypress="runScript(event)" name="cari_barang" id="cari_barang" class="form-control" />
+					</td>
+				</tr>
+			</table>
+		</div>
+	</div>
+	<div class="row" style="margin-top: 10px;">
+		<div class="col-lg-12">
+			<div class="panel panel-default">
+				<div class="panel-heading">
+					<!--<button id="btn_upload" fungsi="HapusStockopname()" class="btn btn-danger btn-sm ask-stockopname" type="button">
+						<i class="fa fa-times"></i>
+						&nbsp;&nbsp;Hapus
+					</button>-->
+					<!-- <button id="btn_upload" onclick="CetakStockopname()" class="btn btn-info btn-sm" type="button">
+						<i class="fa fa-print"></i>
+						&nbsp;&nbsp;Cetak PDF
+					</button>
+					<button id="btn_upload" onclick="CetakStockopnameExcel()" class="btn btn-info btn-sm" type="button">
+						<i class="fa fa-print"></i>
+						&nbsp;&nbsp;Cetak Excel
+					</button>
+					<button id="btn_edit" onclick="EditStockopname()" class="btn btn-warning btn-sm" type="button">
+						<i class="fa fa-edit"></i>
+						&nbsp;&nbsp;Edit
+					</button>
+					<button style="display: none;" id="btn_simpan" onclick="SimpanStockopname()" class="btn btn-success btn-sm" type="button">
+						<i class="fa fa-save"></i>
+						&nbsp;&nbsp;Simpan
+					</button> -->
+					<div id="progres-main" style="width: 150px; float: right; display: none;">
+						<div class="progress progress-striped active">
+							<div class="progress-bar progress-bar-info" style="width: 100%" aria-valuemax="100" aria-valuemin="0" aria-valuenow="20" role="progressbar">
+								<span class="sr-only">20% Complete</span>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="panel-body">
+					<table>
+						<tr>
+							<td>
+								Kode Barang :
+								<div class="form-group input-group">
+									<input style="width: 150px; float: right;" type="text" onkeypress="return keyEnterBarang(event)" name="so_barang" id="so_barang" class="form-control" />
+								</div>
+							</td>
+							<td>&nbsp;</td>
+							<td>
+								Nama Barang :
+								<div class="form-group input-group">
+									<input style="width: 250px; float: right;" readonly type="text" name="so_nama_barang" id="so_nama_barang" class="form-control" />
+								</div>
+							</td>
+							<td>&nbsp;</td>
+							<td>
+								Stok Sistem :
+								<div class="form-group input-group">
+									<input style="width: 150px; float: right;" readonly type="text" name="so_stok_sistem" id="so_stok_sistem" class="form-control" />
+								</div>
+							</td>
+							<td>&nbsp;</td>
+							<td>
+								Stok Fisik :
+								<div class="form-group input-group">
+									<input style="width: 150px; float: right;" type="text" name="so_stok_fisik" id="so_stok_fisik" class="form-control" />
+								</div>
+							</td>
+							<td>&nbsp;</td>
+							<td>
+								Harga Nota :
+								<div class="form-group input-group">
+									<input style="width: 150px; float: right;" readonly type="text" name="so_harga" id="so_harga" class="form-control" />
+								</div>
+							</td>
+							<td>&nbsp;</td>
+							<td>
+								<button id="btn_tambah" onclick="SimpanSO()" class="btn btn-info btn-sm" type="button">
+									<i class="fa fa-save"></i>
+									&nbsp;&nbsp;Simpan
+								</button>
+							</td>
+						</tr>
+					</table>
+					<div class="table-responsive table-stockopname">
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<script>
+	$(document).ready(function(){
+		OpenMenu();
+		loadListToko();
+		// LoadListDataBarang();
+		//loadListRak();
+		
+		$('#search_tanggal').datepicker({
+			format: 'yyyy-mm-dd'
+		});
+		$('.ask-stockopname').jConfirmAction();
+	});
+	
+	function keyEnterBarang(event){
+		if (event.which == 13 || event.keyCode == 13) {
+	        $.ajax({
+	        	type: "POST",
+	        	url: "<?php echo base_url(); ?>index.php/barang/gethargabarangsupplier",
+	        	data: "barang_kode="+$("#so_barang").val()+"&toko_kode="+$("#cari_toko_kode").val(),
+	        	success: function(msg){
+	        		if(msg == ""){
+	        			alert("barang tidak ditemukan / harga beli supplier belum ada");
+	        			// $("#pembelian_barang").show();
+	        			// LoadListDataBarang();
+	        			// $("#pembelian_barang_barcode").hide();
+	        		}else{
+						var result = msg.split("_wecode_");
+						$("#so_barang").val(result[2])
+						$("#so_harga").val(result[0]);
+						// $("#op_harga").val(result[0]);
+						// price("pembelian_harga_beli");
+						// $("#op_kwt").val(1);
+						
+						// $("#op_ppn").val(result[1]);
+						// price("pembelian_ppn_beli");
+						$("#so_nama_barang").val(result[3]);
+						// if(result[1] == "0"){
+						// 	$("#op_is_ppn").prop("checked", false);
+						// }else{
+						// 	$("#op_is_ppn").prop("checked", true);
+						// }
+						
+						$("#so_stok_sistem").val(result[4]);
+						$("#so_stok_fisik").focus();
+						$("#so_stok_fisik").select();
+					}
+				}
+	        });
+	        return false;
+	    }
+	    return true;
+	}
+	
+	function LoadDataStockopname(){
+		$('#progres-main').show();
+		$.ajax({
+			type: "POST",
+			url: "<?= base_url() ?>index.php/stockopname/getdatastockopname",
+			data: "toko_kode="+$('#cari_toko_kode').val()+"&tanggal="+$('#search_tanggal').val()+"&barang_kode="+$('#cari_barang').val(),
+			success: function(msg){
+				$(".table-stockopname").html(msg);
+				//table = $('#dataTables-pembelian-barang').dataTable();
+				$('#progres-main').hide();
+				
+				/*$('#dataTables-stockopname tbody').on( 'click', 'tr', function () {
+			        if ( $(this).hasClass('active') ) {
+			            $(this).removeClass('active');
+			        }else {
+			            $('#dataTables-stockopname tr.active').removeClass('active');
+			            $(this).addClass('active');
+			        }
+			    } );*/
+				// $('#btn_edit').show();
+				// $('#btn_simpan').hide();
+			}
+		});
+	}
+	
+	function loadListToko(){
+		$.ajax({
+			type: "POST",
+			url: "<?= base_url() ?>index.php/toko/getListToko",
+			data: "",
+			success: function(msg){
+				$("#cari_toko_kode").html(msg);
+				
+				loadListBukti();
+			}
+		});
+	}
+
+	function SimpanSO(){
+		var toko_kode = $("#cari_toko_kode").val();
+		var barang_kode = $("#so_barang").val();
+		var stok_sistem = $("#so_stok_sistem").val();
+		var stok_fisik = $("#so_stok_fisik").val();
+		var hpp = $("#so_harga").val();
+
+		if(stok_sistem == ""){
+			stok_sistem = "0";
+		}
+
+		if(hpp == ""){
+			hpp = "0";
+		}
+
+		if(stok_fisik == ""){
+			alert("stok fisik harus diisi");
+		}else{
+			$.ajax({
+				type: "POST",
+				url: "<?= base_url() ?>index.php/stockopname/simpanso",
+				data: "toko_kode="+toko_kode+"&barang_kode="+barang_kode+"&stok_sistem="+stok_sistem+"&stok_fisik="+stok_fisik+"&hpp="+hpp,
+				success: function(msg){
+					LoadDataStockopname();
+				}
+			});
+		}
+	}
+	
+</script>

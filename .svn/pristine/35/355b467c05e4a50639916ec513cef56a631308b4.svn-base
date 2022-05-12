@@ -1,0 +1,68 @@
+<?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
+
+class Stockopname_model extends CI_Model{
+	function __construct(){
+		parent::__construct();
+	}
+	
+	function getDataStockopname($data){
+		$where = "and a.rak='".$data['rak']."'";
+		if($data['rak'] == "-1"){
+			$where = "";
+		}
+		$query = "select a.bukti, a.toko_kode, a.barang_kode, a.tanggal, a.stok_sistem, a.stok_opname, a.selisih, a.user_id, b.barcode, b.nama_barang, a.rak, a.shlv, a.urut from stock_opname a left join barang b on a.barang_kode=b.kode where a.toko_kode='".$data['toko_kode']."' and a.bukti='".$data['bukti']."' ".$where." order by cast(a.rak as signed), cast(a.shlv as signed), cast(a.urut as signed)";
+		
+		$result = $this->db->query($query);
+		
+		return $result->result_array();
+	}
+	
+	function SimpanStockopname($data){
+		$query = "";
+		$username = $this->session->userdata('username');
+		
+		$query = "update stock_opname set stok_opname=".$data['stok_opname'].", selisih=".$data['selisih'].", user_id='".$username."', waktu_update=NOW() where bukti='".$data['bukti']."' and toko_kode='".$data['toko_kode']."' and barang_kode='".$data['barang_kode']."' and rak='".$data['rak']."' and shlv='".$data['shlv']."' and urut='".$data['urut']."'";
+		
+		$this->db->query($query);
+	}
+	
+	function HapusStockopname($data){
+		$queryDelete = "delete from stock_opname where bukti='".$data['bukti']."'";
+		
+		$this->db->query($queryDelete);
+	}
+	
+	function getBuktiStockOpname($data){
+		$query = "select a.bukti from stock_opname a where a.toko_kode='".$data['toko_kode']."' and a.bukti like '".date('Ym')."%' group by a.bukti limit 10";
+		
+		$result = $this->db->query($query);
+		
+		return $result->result_array();
+	}
+	
+	function getStockToko($data){
+		$query = "select saldo_akhir_kwt as jumlah from saldo_barang_toko where toko_kode='".$data['toko_kode']."' and barang_kode='".$data['barang_kode']."' and bulan=month(NOW()) and tahun=year(NOW())";
+		
+		$result = $this->db->query($query);
+		
+		return $result->result_array();
+	}
+	
+	function getDataRak($data){
+		$query = "select distinct(a.rak) as rak from stock_opname a where a.toko_kode='".$data['toko_kode']."' and bukti='".$data['bukti']."' order by cast(a.rak as signed)";
+		
+		$result = $this->db->query($query);
+		return $result->result_array();
+	}
+	
+	function TambahBarangStock($data){
+		if(!isset($data['hpp'])){
+			$data['hpp'] = 0;
+		}
+		$query = "insert into stock_opname(bukti, toko_kode, barang_kode, rak, tanggal, stok_sistem, stok_opname, hpp, user_id, waktu_insert, waktu_update) value('".$data['bukti']."', '".$data['toko_kode']."', '".$data['barang_kode']."', '".$data['rak']."', NOW(), ".$data['stok_sys'].", ".$data['stok_op'].", ".$data['hpp'].", '".$this->session->userdata('username')."', NOW(), NOW())";
+		
+		$this->db->query($query);
+	}
+}
+
+?>

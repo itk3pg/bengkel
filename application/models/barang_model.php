@@ -335,7 +335,7 @@ class Barang_model extends CI_Model{
 		}else{
 			$query = "select if(concat('',SUBSTRING(kode, 2) * 1) = SUBSTRING(kode, 2), (SUBSTRING(kode, 2) + 1), if(concat('',SUBSTRING(kode, 3) * 1) = SUBSTRING(kode, 3), (SUBSTRING(kode, 3) + 1), (SUBSTRING(kode, 1) + 1))) as urut, kode, barcode, nama_barang, kategori from barang order by CAST(urut as UNSIGNED) desc limit 1";
 		}
-		$query = "select replace(kode, kategori, '')+1 as urut, kode, barcode, nama_barang, kategori from barang order by CAST(urut as UNSIGNED) desc limit 1";
+		$query = "select (cast(replace(kode, kategori, '') as integer) + 1) as urut, kode, barcode, nama_barang, kategori from barang where kategori = '".$data['kategori_kode']."' and length(replace(kode, kategori, '')) < 7 order by CAST(urut as UNSIGNED) desc limit 1";
 		$result = $this->db->query($query);
 		$ResultArr = $result->result_array();
 
